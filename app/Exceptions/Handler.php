@@ -1,84 +1,69 @@
 <?php
 
-
 namespace App\Exceptions;
 
+use Throwable;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
-use Illuminate\Validation\ValidationException;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Routing\Exception\ResourceNotFoundException;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
-use Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException;
-use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
-use Throwable;
-use Illuminate\Http\JsonResponse;
 
 class Handler extends ExceptionHandler
 {
-    /**
-     * Register the exception handling callbacks for the application.
-     */
-    public function register(): void
-    {
-        $this->renderable(function (Throwable $exception, $request) {
-            if ($request->expectsJson()) {
-                return $this->handleApiException($request, $exception);
-            }
-        });
-    }
+    protected $dontReport = [];
 
-    /**
-     * Handle API-specific exceptions and return JSON responses.
-     */
-    private function handleApiException($request, Throwable $exception): JsonResponse
+    protected $dontFlash = [
+        'password',
+        'password_confirmation',
+    ];
+
+    public function register()
     {
-        if ($exception instanceof ValidationException) {
+        // Handle Validation Errors
+        $this->renderable(function (ValidationException $e, $request) {
             return response()->json([
-                'message' => 'Validation Error',
-                'errors' => $exception->errors(),
+                'status' => 'error',
+                'data' => null,
+                'error' => $e->errors()
             ], 422);
-        }
+        });
 
-        if ($exception instanceof AuthenticationException) {
+        // Handle Custom User Already Exists Exception
+        $this->renderable(function (UserAlreadyExistsException $e, $request) {
             return response()->json([
-                'message' => 'Unauthenticated. Please log in.',
-            ], 401);
-        }
+                'status' => 'error',
+                'data' => null,
+                'error' => $e->getMessage()
+            ], 409);
+        });
 
-        if ($exception instanceof UnauthorizedHttpException) {
+        // Handle Resource Not Found
+        $this->renderable(function (ResourceNotFoundException|NotFoundHttpException $e, $request) {
             return response()->json([
-                'message' => 'Unauthorized access.',
-            ], 403);
-        }
-
-        if ($exception instanceof ModelNotFoundException) {
-            return response()->json([
-                'message' => 'Resource not found.',
+                'status' => 'error',
+                'data' => null,
+                'error' => "Resource not found"
             ], 404);
-        }
+        });
 
-        if ($exception instanceof NotFoundHttpException) {
+        // Handle Method Not Allowed
+        $this->renderable(function (MethodNotAllowedHttpException $e, $request) {
             return response()->json([
-                'message' => 'Endpoint not found.',
-            ], 404);
-        }
-
-        if ($exception instanceof MethodNotAllowedHttpException) {
-            return response()->json([
-                'message' => 'HTTP method not allowed.',
+                'status' => 'error',
+                'data' => null,
+                'error' => "Method not allowed"
             ], 405);
-        }
+        });
 
-        if ($exception instanceof TooManyRequestsHttpException) {
+        // Handle Authentication Exception
+        $this->renderable(function (AuthenticationException $e, $request) {
             return response()->json([
-                'message' => 'Too many requests. Please slow down.',
-            ], 429);
-        }
-
-        return response()->json([
-            'message' => 'An unexpected error occurred.',
-            'error' => $exception->getMessage(),
-        ], 500);
+                'status' => 'error',
+                'data' => null,
+                'error' => 'Unauthenticated'
+            ], 401);
+        });
     }
 }

@@ -5,6 +5,8 @@ use App\Repositories\UserRepository;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
+use App\Models\User;
+use App\Exceptions\UserAlreadyExistsException;
 
 class UserService {
     protected UserRepository $userRepository;
@@ -14,6 +16,11 @@ class UserService {
     }
 
     public function registerUser(array $data) {
+           // Check if user already exists
+        if (User::where('email', $data['email'])->exists()) {
+         throw new UserAlreadyExistsException();
+        }
+
         $data['password'] = Hash::make($data['password']);
         return $this->userRepository->create($data);
     }

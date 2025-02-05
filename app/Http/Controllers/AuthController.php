@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use App\Http\Requests\RegisterUserRequest;
 
 class AuthController extends Controller {
     protected UserService $userService;
@@ -14,8 +15,10 @@ class AuthController extends Controller {
         $this->userService = $userService;
     }
 
-    public function register(Request $request): JsonResponse {
-        $user = $this->userService->registerUser($request->all());
+    public function register(RegisterUserRequest $request): JsonResponse {
+
+
+        $user = $this->userService->registerUser($request->validated());
         return response()->json(['message' => 'User registered', 'user' => $user], 201);
     }
 
